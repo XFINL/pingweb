@@ -75,6 +75,16 @@ body {
   border-radius: 2px;
 }
 
+/* Leaflet map - remove all default focus outlines */
+.leaflet-container path:focus,
+.leaflet-container path:focus-visible,
+.leaflet-container svg:focus,
+.leaflet-container *:focus,
+.leaflet-container *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
