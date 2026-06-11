@@ -191,7 +191,10 @@ export default function NodeMap({ nodes, valueLabel }: NodeMapProps) {
             const name = feature.properties?.name || "";
             const val = name ? getRegionValue(name) : null;
             const display = val !== null ? `${val} ms` : "无数据";
+            const color = val !== null ? getColor(val) : "#333";
+            const opacity = getOpacity(val);
 
+            // 只显示 tooltip，不产生选中框线
             layer.bindTooltip(
               `<div style="font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.4">
                 <strong>${name}</strong><br/>
@@ -199,6 +202,27 @@ export default function NodeMap({ nodes, valueLabel }: NodeMapProps) {
               </div>`,
               { sticky: true }
             );
+
+            // 阻止默认高亮框线
+            const path = layer as any;
+            path.on({
+              mouseover: () => {
+                path.setStyle({
+                  fillColor: color,
+                  fillOpacity: opacity,
+                  color: "rgba(255,255,255,0.3)",
+                  weight: 0.5,
+                });
+              },
+              mouseout: () => {
+                path.setStyle({
+                  fillColor: color,
+                  fillOpacity: opacity,
+                  color: "rgba(255,255,255,0.15)",
+                  weight: 0.5,
+                });
+              },
+            });
           },
         });
 
