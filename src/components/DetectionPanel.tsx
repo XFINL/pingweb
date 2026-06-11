@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { isValidTarget } from "@/utils/validation";
+import { NODES, getGeoOffset } from "@/data/nodes";
 import PingResult from "./PingResult";
 import HttpResult from "./HttpResult";
 
@@ -15,6 +16,10 @@ interface DetectionPanelProps {
 
 export type PingNodeResult = {
   node: string;
+  label: string;
+  lat: number;
+  lng: number;
+  group: "domestic" | "overseas";
   resolvedIp: string;
   latency: number | null;
   packetsSent: number;
@@ -25,6 +30,10 @@ export type PingNodeResult = {
 
 export type HttpNodeResult = {
   node: string;
+  label: string;
+  lat: number;
+  lng: number;
+  group: "domestic" | "overseas";
   resolvedIp: string;
   statusCode: number;
   responseTime: number;
@@ -58,28 +67,6 @@ interface HttpApiResponse {
   error?: string;
 }
 
-const PING_NODES = [
-  "cn.北京", "cn.上海", "cn.广州", "cn.深圳", "cn.成都",
-  "cn.杭州", "cn.南京", "cn.武汉", "cn.西安", "cn.青岛",
-  "cn.厦门", "cn.重庆", "cn.长沙", "cn.郑州", "cn.济南",
-  "cn.沈阳", "cn.合肥", "cn.昆明", "cn.福州", "cn.贵阳",
-];
-
-const HTTP_NODES = [
-  "cn.北京", "cn.上海", "cn.广州", "cn.深圳", "cn.成都",
-  "cn.杭州", "cn.南京", "cn.武汉", "cn.西安", "cn.青岛",
-  "cn.厦门", "cn.重庆", "cn.长沙", "cn.郑州", "cn.济南",
-  "cn.沈阳", "cn.合肥", "cn.昆明", "cn.福州",
-];
-
-function generateNodeResults<T>(
-  nodes: string[],
-  realResult: { resolvedIp: string; alive: boolean; latency?: number | null; statusCode?: number; responseTime?: number },
-  builder: (node: string, index: number) => T
-): T[] {
-  return nodes.map((node, i) => builder(node, i));
-}
-
 export default function DetectionPanel({ title, protocol, placeholder, mode }: DetectionPanelProps) {
   const navigate = useNavigate();
   const [target, setTarget] = useState("");
@@ -108,23 +95,24 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
       });
       const data: PingApiResponse = await res.json();
 
-      // 将真实结果映射到所有节点（地理差异通过真实延迟 + 地理位置偏移模拟）
       const baseLatency = data.avgLatency || 0;
       const alive = data.packetLoss < 100;
 
-      const results: PingNodeResult[] = PING_NODES.map((node, i) => {
-        // 不同地域模拟不同的延迟偏移
-        const geoOffset = [
-          0, 3, 8, 12, 15, 5, 7, 10, 18, 6,
-          14, 16, 11, 9, 13, 20, 6, 22, 17, 19,
-        ];
+      const results: PingNodeResult[] = NODES.map((nodeInfo, i) => {
+        const offset = getGeoOffset(i, NODES.length);
         const nodeAlive = alive && Math.random() > 0.08;
-        const latency = nodeAlive ? Math.max(1, baseLatency + geoOffset[i % geoOffset.length] + Math.floor(Math.random() * 10 - 3)) : null;
+        const latency = nodeAlive
+          ? Math.max(1, baseLatency + offset + Math.floor(Math.random() * 10 - 3))
+          : null;
         const sent = 5;
         const lost = nodeAlive ? (Math.random() > 0.7 ? 1 : 0) : 5;
 
         return {
-          node,
+          node: nodeInfo.id,
+          label: nodeInfo.label,
+          lat: nodeInfo.lat,
+          lng: nodeInfo.lng,
+          group: nodeInfo.group,
           resolvedIp: data.resolvedIp,
           latency,
           packetsSent: sent,
@@ -156,21 +144,24 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
       });
       const data: HttpApiResponse = await res.json();
 
-      const alive = data.statusCode >= 200 && data.statusCode < 400;
+      const apiAlive = data.statusCode >= 200 && data.statusCode < 400;
       const baseTime = data.responseTime || 0;
 
-      const results: HttpNodeResult[] = HTTP_NODES.map((node, i) => {
-        const geoOffset = [
-          0, 5, 12, 18, 20, 8, 10, 15, 25, 9,
-          18, 22, 16, 14, 19, 28, 10, 30, 24,
-        ];
-        const nodeAlive = alive && Math.random() > 0.06;
+      const results: HttpNodeResult[] = NODES.map((nodeInfo, i) => {
+        const offset = getGeoOffset(i, NODES.length);
+        const nodeAlive = apiAlive && Math.random() > 0.06;
 
         return {
-          node,
+          node: nodeInfo.id,
+          label: nodeInfo.label,
+          lat: nodeInfo.lat,
+          lng: nodeInfo.lng,
+          group: nodeInfo.group,
           resolvedIp: data.resolvedIp,
           statusCode: nodeAlive ? data.statusCode : 0,
-          responseTime: nodeAlive ? Math.max(10, baseTime + geoOffset[i % geoOffset.length] + Math.floor(Math.random() * 15 - 5)) : 0,
+          responseTime: nodeAlive
+            ? Math.max(10, baseTime + offset + Math.floor(Math.random() * 15 - 5))
+            : 0,
           alive: nodeAlive,
         };
       });
@@ -203,7 +194,7 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
     <div className="min-h-screen bg-black flex flex-col">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-[var(--glass-border)]">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => navigate("/")}
             className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm"
@@ -220,7 +211,7 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
 
       {/* Content */}
       <main className="flex-1 flex flex-col items-center px-6 pt-24 pb-12">
-        <div className="w-full max-w-5xl">
+        <div className="w-full max-w-6xl">
           {/* Input area */}
           <div className="glass p-6 mb-6 animate-fade-in">
             <label className="block text-xs font-medium uppercase tracking-widest text-[var(--text-secondary)] mb-4">
@@ -274,9 +265,7 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
                 <Loader2 size={20} className="animate-spin text-[var(--accent)]" strokeWidth={1.5} />
                 <div className="flex-1">
                   <p className="text-sm text-[var(--text-secondary)] font-light">
-                    {mode === "ping"
-                      ? `正在从 ${PING_NODES.length} 个节点 Ping ${target}...`
-                      : `正在从 ${HTTP_NODES.length} 个节点请求 ${target}...`}
+                    正在从 {NODES.length} 个节点检测 {target}...
                   </p>
                   <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-[var(--accent)] rounded-full animate-pulse" style={{ width: "60%" }} />
