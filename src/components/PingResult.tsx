@@ -22,6 +22,7 @@ export default function PingResult({ results, target, protocol, completedAt }: P
     results.filter((r) => r.latency !== null).reduce((s, r) => s + (r.latency || 0), 0) /
       Math.max(results.filter((r) => r.latency !== null).length, 1)
   );
+  const resolvedIp = results[0]?.resolvedIp || "";
 
   return (
     <div className="glass p-6 animate-slide-up space-y-5">
@@ -29,7 +30,10 @@ export default function PingResult({ results, target, protocol, completedAt }: P
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-[var(--text-primary)]">{target}</h2>
-          <p className="text-[11px] text-[var(--text-tertiary)] font-light mt-0.5">多节点 Ping 检测结果</p>
+          <p className="text-[11px] text-[var(--text-tertiary)] font-light mt-0.5">
+            多节点 Ping 检测结果
+            {resolvedIp && <span className="ml-2 font-mono text-[var(--text-tertiary)]">&#8594; {resolvedIp}</span>}
+          </p>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-[var(--text-secondary)] font-light">
           <span className="tabular-nums">{aliveCount}/{results.length} 在线</span>
@@ -46,6 +50,7 @@ export default function PingResult({ results, target, protocol, completedAt }: P
           <thead>
             <tr className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-medium">
               <th className="text-left pb-3 pr-4">节点</th>
+              <th className="text-left pb-3 pr-4">解析</th>
               <th className="text-right pb-3 pr-4 tabular-nums">延迟</th>
               <th className="text-right pb-3 pr-4 tabular-nums">发包</th>
               <th className="text-right pb-3 pr-4 tabular-nums">丢包</th>
@@ -65,6 +70,9 @@ export default function PingResult({ results, target, protocol, completedAt }: P
               >
                 <td className="py-2.5 pr-4">
                   <span className="text-xs text-[var(--text-primary)] font-medium">{r.node}</span>
+                </td>
+                <td className="py-2.5 pr-4">
+                  <span className="text-[10px] font-mono text-[var(--text-tertiary)]">{r.resolvedIp}</span>
                 </td>
                 <td className="py-2.5 pr-4 text-right">
                   {r.latency !== null ? (

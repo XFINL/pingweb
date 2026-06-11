@@ -28,6 +28,7 @@ export default function HttpResult({ results, target, protocol, completedAt }: H
     results.filter((r) => r.alive).reduce((s, r) => s + r.responseTime, 0) /
       Math.max(aliveCount, 1)
   );
+  const resolvedIp = results[0]?.resolvedIp || "";
 
   return (
     <div className="glass p-6 animate-slide-up space-y-5">
@@ -35,7 +36,10 @@ export default function HttpResult({ results, target, protocol, completedAt }: H
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-[var(--text-primary)]">{target}</h2>
-          <p className="text-[11px] text-[var(--text-tertiary)] font-light mt-0.5">多节点 HTTP 检测结果</p>
+          <p className="text-[11px] text-[var(--text-tertiary)] font-light mt-0.5">
+            多节点 HTTP 检测结果
+            {resolvedIp && <span className="ml-2 font-mono text-[var(--text-tertiary)]">&#8594; {resolvedIp}</span>}
+          </p>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-[var(--text-secondary)] font-light">
           <span className="tabular-nums">{aliveCount}/{results.length} 在线</span>
@@ -51,6 +55,7 @@ export default function HttpResult({ results, target, protocol, completedAt }: H
           <thead>
             <tr className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-medium">
               <th className="text-left pb-3 pr-4">节点</th>
+              <th className="text-left pb-3 pr-4">解析</th>
               <th className="text-right pb-3 pr-4 tabular-nums">状态码</th>
               <th className="text-right pb-3 pr-4 tabular-nums">响应时间</th>
               <th className="text-right pb-3">状态</th>
@@ -68,6 +73,9 @@ export default function HttpResult({ results, target, protocol, completedAt }: H
               >
                 <td className="py-2.5 pr-4">
                   <span className="text-xs text-[var(--text-primary)] font-medium">{r.node}</span>
+                </td>
+                <td className="py-2.5 pr-4">
+                  <span className="text-[10px] font-mono text-[var(--text-tertiary)]">{r.resolvedIp}</span>
                 </td>
                 <td className="py-2.5 pr-4 text-right">
                   {r.alive ? (
