@@ -33,8 +33,6 @@ export default function PingResult({ results, target, protocol, completedAt }: P
   const mapNodes = results.map((r) => ({
     id: r.node,
     label: r.label,
-    lat: r.lat,
-    lng: r.lng,
     value: r.latency,
     alive: r.alive,
   }));

@@ -1,10 +1,16 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 静态文件：GeoJSON 数据
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "public")));
 
 // ─── 解析目标 IP ─────────────────────────────────────────
 function resolveIp(target, v6) {

@@ -39,8 +39,6 @@ export default function HttpResult({ results, target, protocol, completedAt }: H
   const mapNodes = results.map((r) => ({
     id: r.node,
     label: r.label,
-    lat: r.lat,
-    lng: r.lng,
     value: r.responseTime > 0 ? r.responseTime : null,
     alive: r.alive,
   }));

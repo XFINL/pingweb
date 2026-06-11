@@ -14,6 +14,14 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/china.geojson': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/world-110m.json': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
   plugins: [
