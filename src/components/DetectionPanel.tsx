@@ -12,6 +12,7 @@ interface DetectionPanelProps {
   protocol: string;
   placeholder?: string;
   mode: "ping" | "http";
+  isV6: boolean;
 }
 
 export type PingNodeResult = {
@@ -67,7 +68,7 @@ interface HttpApiResponse {
   error?: string;
 }
 
-export default function DetectionPanel({ title, protocol, placeholder, mode }: DetectionPanelProps) {
+export default function DetectionPanel({ title, protocol, placeholder, mode, isV6 }: DetectionPanelProps) {
   const navigate = useNavigate();
   const [target, setTarget] = useState("");
   const [loading, setLoading] = useState(false);
@@ -91,7 +92,7 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
       const res = await fetch("/api/ping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target: target.trim() }),
+        body: JSON.stringify({ target: target.trim(), v6: isV6 }),
       });
       const data: PingApiResponse = await res.json();
 
@@ -140,7 +141,7 @@ export default function DetectionPanel({ title, protocol, placeholder, mode }: D
       const res = await fetch("/api/http", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target: target.trim() }),
+        body: JSON.stringify({ target: target.trim(), v6: isV6 }),
       });
       const data: HttpApiResponse = await res.json();
 

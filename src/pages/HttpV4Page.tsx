@@ -7,6 +7,7 @@ export default function HttpV4Page() {
       protocol="HTTP/1.1 (IPv4)"
       placeholder="输入 IPv4 地址或域名"
       mode="http"
+      isV6={false}
     />
   );
 }

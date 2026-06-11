@@ -7,6 +7,7 @@ export default function PingV6Page() {
       protocol="ICMP (IPv6)"
       placeholder="输入 IPv6 地址或域名"
       mode="ping"
+      isV6={true}
     />
   );
 }

@@ -7,23 +7,23 @@ app.use(cors());
 app.use(express.json());
 
 // ─── 解析目标 IP ─────────────────────────────────────────
-function resolveIp(target) {
+function resolveIp(target, v6) {
+  // 已经是 IP 格式则直接返回
   if (/^\d+\.\d+\.\d+\.\d+$/.test(target)) return target;
+  if (/^[0-9a-fA-F:]+$/.test(target)) return target;
   try {
-    const out = execSync(`nslookup ${target} 2>/dev/null | tail -5`, {
-      timeout: 5000,
-      encoding: "utf-8",
-    });
-    // 匹配 "Address: x.x.x.x" 或 "Address: x.x.x.x#53" → 取 IP
-    const m = out.match(/Address:\s*(\d+\.\d+\.\d+\.\d+)/);
-    if (m) return m[1];
-    // dig 兜底
-    const digOut = execSync(`dig +short ${target} 2>/dev/null`, {
-      timeout: 5000,
-      encoding: "utf-8",
-    });
-    const ip = digOut.trim().split("\n")[0];
-    if (ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip;
+    // v6 查 AAAA 记录，v4 查 A 记录
+    const digCmd = v6
+      ? `dig AAAA +short ${target} 2>/dev/null | head -1`
+      : `dig +short ${target} 2>/dev/null | head -1`;
+    const ip = execSync(digCmd, { timeout: 5000, encoding: "utf-8" }).trim();
+    if (ip) {
+      // 去掉末尾点号（dig 有时会返回带点的域名）
+      const clean = ip.replace(/\.$/, "");
+      // v6 地址含冒号，v4 地址含点号
+      if (v6 && clean.includes(":")) return clean;
+      if (!v6 && /^\d+\.\d+\.\d+\.\d+$/.test(clean)) return clean;
+    }
     return "解析失败";
   } catch {
     return "解析失败";
@@ -32,22 +32,23 @@ function resolveIp(target) {
 
 // ─── Ping API ─────────────────────────────────────────────
 app.post("/api/ping", (req, res) => {
-  const { target } = req.body;
+  const { target, v6 } = req.body;
   if (!target) return res.status(400).json({ error: "缺少 target" });
 
-  const ip = resolveIp(target);
+  const ip = resolveIp(target, v6);
+  const pingFlag = v6 ? "-6" : "-4";
 
   try {
-    const raw = execSync(`ping -c 5 -n ${target} 2>&1`, {
+    const raw = execSync(`ping ${pingFlag} -c 5 -n ${target} 2>&1`, {
       timeout: 15000,
       encoding: "utf-8",
     });
 
-    // 解析统计数据行: "5 packets transmitted, 5 received, 0% packet loss"
+    // 解析统计数据
     const statMatch = raw.match(
       /(\d+)\s+packets transmitted,\s+(\d+)\s+received,\s+(\d+)%?\s*packet loss/
     );
-    // 解析 rtt 行: "rtt min/avg/max/mdev = 9.520/10.360/11.500/0.738 ms"
+    // 解析 rtt
     const rttMatch = raw.match(
       /rtt\s+min\/avg\/max\/mdev\s*=\s*([\d.]+)\/([\d.]+)\/([\d.]+)\/([\d.]+)/
     );
@@ -74,7 +75,6 @@ app.post("/api/ping", (req, res) => {
       })),
     });
   } catch (e) {
-    // ping 超时或失败也返回部分数据
     const stderr = e.stderr || "";
     const stdout = e.stdout || "";
     const combined = stdout + stderr;
@@ -104,17 +104,17 @@ app.post("/api/ping", (req, res) => {
 
 // ─── HTTP API ─────────────────────────────────────────────
 app.post("/api/http", async (req, res) => {
-  const { target } = req.body;
+  const { target, v6 } = req.body;
   if (!target) return res.status(400).json({ error: "缺少 target" });
 
-  const ip = resolveIp(target);
+  const ip = resolveIp(target, v6);
+  const curlFlag = v6 ? "-6" : "-4";
 
   try {
-    // 用 curl 获取详细时间指标
     const protocol = target.startsWith("http") ? "" : "https://";
     const url = `${protocol}${target}`;
 
-    const curlCmd = `curl -o /dev/null -s -w 'dns:%{time_namelookup},tcp:%{time_connect},tls:%{time_appconnect},total:%{time_total},code:%{http_code},size:%{size_download},server:%{content_type}' -L --max-time 10 '${url}' 2>&1`;
+    const curlCmd = `curl ${curlFlag} -o /dev/null -s -w 'dns:%{time_namelookup},tcp:%{time_connect},tls:%{time_appconnect},total:%{time_total},code:%{http_code},size:%{size_download},server:%{content_type}' -L --max-time 10 '${url}' 2>&1`;
 
     const raw = execSync(curlCmd, { timeout: 15000, encoding: "utf-8" }).trim();
 
@@ -148,7 +148,6 @@ app.post("/api/http", async (req, res) => {
     const stdout = e.stdout || "";
     const combined = stdout + stderr;
 
-    // 尝试提取 curl 的错误信息中的 HTTP 状态码
     const codeMatch = combined.match(/HTTP\/[\d.]+\s+(\d+)/);
     const httpCode = codeMatch ? parseInt(codeMatch[1]) : 0;
 
