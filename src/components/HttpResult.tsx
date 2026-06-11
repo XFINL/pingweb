@@ -1,138 +1,104 @@
 import { cn } from "@/lib/utils";
-import { CheckCircle, XCircle } from "lucide-react";
-import type { HttpResultData } from "./DetectionPanel";
+import type { HttpNodeResult } from "./DetectionPanel";
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+interface HttpResultProps {
+  results: HttpNodeResult[];
+  target: string;
+  protocol: string;
+  completedAt: string;
 }
 
-function statusColor(code: number): string {
-  if (code < 300) return "text-green-400";
-  if (code < 400) return "text-yellow-400";
-  return "text-red-400";
+function statusCodeClass(code: number): string {
+  if (code >= 200 && code < 300) return "text-green-400";
+  if (code >= 300 && code < 400) return "text-yellow-400";
+  if (code >= 400) return "text-red-400";
+  return "text-[var(--text-tertiary)]";
 }
 
-function statusBg(code: number): string {
-  if (code < 300) return "bg-green-400/10 border-green-400/20";
-  if (code < 400) return "bg-yellow-400/10 border-yellow-400/20";
-  return "bg-red-400/10 border-red-400/20";
+function statusBadge(alive: boolean, code: number) {
+  if (!alive) return <span className="text-[10px] text-red-400 font-medium">超时</span>;
+  if (code < 300) return <span className="text-[10px] text-green-400 font-medium">正常</span>;
+  if (code < 400) return <span className="text-[10px] text-yellow-400 font-medium">重定向</span>;
+  return <span className="text-[10px] text-red-400 font-medium">错误</span>;
 }
 
-export default function HttpResult({ data, protocol }: { data: HttpResultData; protocol: string }) {
-  const success = data.statusCode < 400;
+export default function HttpResult({ results, target, protocol, completedAt }: HttpResultProps) {
+  const aliveCount = results.filter((r) => r.alive).length;
+  const avgResponseTime = Math.round(
+    results.filter((r) => r.alive).reduce((s, r) => s + r.responseTime, 0) /
+      Math.max(aliveCount, 1)
+  );
 
   return (
     <div className="glass p-6 animate-slide-up space-y-5">
-      {/* Status header */}
-      <div className="flex items-center gap-3">
-        {success ? (
-          <CheckCircle size={20} className="text-green-400 shrink-0" strokeWidth={1.5} />
-        ) : (
-          <XCircle size={20} className="text-red-400 shrink-0" strokeWidth={1.5} />
-        )}
+      {/* Summary bar */}
+      <div className="flex items-center justify-between">
         <div>
-          <p className={cn("text-sm font-medium", success ? "text-green-400" : "text-red-400")}>
-            {data.statusCode} {data.statusText}
-          </p>
-          <p className="text-xs text-[var(--text-tertiary)] font-light mt-0.5">
-            {data.target}
-          </p>
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">{target}</h2>
+          <p className="text-[11px] text-[var(--text-tertiary)] font-light mt-0.5">多节点 HTTP 检测结果</p>
+        </div>
+        <div className="flex items-center gap-4 text-[11px] text-[var(--text-secondary)] font-light">
+          <span className="tabular-nums">{aliveCount}/{results.length} 在线</span>
+          <span className="tabular-nums">平均响应 {avgResponseTime} ms</span>
         </div>
       </div>
 
       <div className="border-t border-[var(--glass-border)]" />
 
-      {/* Status code badge */}
-      <div className="flex justify-center">
-        <div className={cn(
-          "inline-flex items-center gap-3 px-5 py-3 rounded-xl border",
-          statusBg(data.statusCode)
-        )}>
-          <span className={cn("text-2xl font-bold tabular-nums", statusColor(data.statusCode))}>
-            {data.statusCode}
-          </span>
-          <span className="text-xs text-[var(--text-secondary)] font-light">
-            {data.statusText}
-          </span>
-        </div>
-      </div>
-
-      {/* Timeline visualization */}
-      <div>
-        <h3 className="text-xs font-medium uppercase tracking-widest text-[var(--text-secondary)] mb-3">
-          请求时间线
-        </h3>
-        <div className="space-y-2">
-          {[
-            { label: "DNS 解析", value: data.dnsLookup },
-            { label: "TCP 连接", value: data.tcpConnect },
-            { label: "TLS 握手", value: data.tlsHandshake },
-          ].map(({ label, value }) => {
-            const maxTime = Math.max(data.dnsLookup + data.tcpConnect + data.tlsHandshake, 1);
-            return (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-xs text-[var(--text-secondary)] font-light w-16 shrink-0">
-                  {label}
-                </span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
-                    style={{ width: `${(value / maxTime) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-[var(--text-primary)] font-mono w-14 text-right tabular-nums">
-                  {value} ms
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Response summary */}
-      <div>
-        <h3 className="text-xs font-medium uppercase tracking-widest text-[var(--text-secondary)] mb-3">
-          响应概况
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="glass !rounded-xl p-3">
-            <p className="text-xs text-[var(--text-tertiary)] font-light">响应时间</p>
-            <p className="text-lg font-medium text-[var(--text-primary)] tabular-nums mt-1">
-              {data.responseTime} <span className="text-xs font-light text-[var(--text-secondary)]">ms</span>
-            </p>
-          </div>
-          <div className="glass !rounded-xl p-3">
-            <p className="text-xs text-[var(--text-tertiary)] font-light">内容大小</p>
-            <p className="text-lg font-medium text-[var(--text-primary)] tabular-nums mt-1">
-              {formatSize(data.contentSize)}
-            </p>
-          </div>
-          <div className="glass !rounded-xl p-3">
-            <p className="text-xs text-[var(--text-tertiary)] font-light">服务器</p>
-            <p className="text-sm font-mono text-[var(--text-primary)] mt-1 truncate">{data.server}</p>
-          </div>
-          <div className="glass !rounded-xl p-3">
-            <p className="text-xs text-[var(--text-tertiary)] font-light">重定向</p>
-            <p className="text-lg font-medium text-[var(--text-primary)] tabular-nums mt-1">
-              {data.redirectCount}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Content type */}
-      <div className="flex items-center gap-2 text-[10px] text-[var(--text-tertiary)] font-light">
-        <span className="px-2 py-0.5 rounded bg-white/5 font-mono truncate max-w-[200px]">
-          {data.contentType}
-        </span>
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-medium">
+              <th className="text-left pb-3 pr-4">节点</th>
+              <th className="text-right pb-3 pr-4 tabular-nums">状态码</th>
+              <th className="text-right pb-3 pr-4 tabular-nums">响应时间</th>
+              <th className="text-right pb-3">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map((r, i) => (
+              <tr
+                key={r.node}
+                className={cn(
+                  "transition-colors duration-200",
+                  "hover:bg-white/[0.03]",
+                  i < results.length - 1 && "border-b border-[var(--glass-border)]"
+                )}
+              >
+                <td className="py-2.5 pr-4">
+                  <span className="text-xs text-[var(--text-primary)] font-medium">{r.node}</span>
+                </td>
+                <td className="py-2.5 pr-4 text-right">
+                  {r.alive ? (
+                    <span className={cn("text-xs font-mono tabular-nums font-medium", statusCodeClass(r.statusCode))}>
+                      {r.statusCode}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-red-400/60">--</span>
+                  )}
+                </td>
+                <td className="py-2.5 pr-4 text-right">
+                  {r.alive ? (
+                    <span className="text-xs font-mono tabular-nums text-[var(--text-primary)]">
+                      {r.responseTime}
+                      <span className="text-[var(--text-tertiary)]"> ms</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-red-400/60">--</span>
+                  )}
+                </td>
+                <td className="py-2.5 text-right">{statusBadge(r.alive, r.statusCode)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Meta */}
       <div className="border-t border-[var(--glass-border)] pt-3 flex justify-between text-[10px] text-[var(--text-tertiary)] font-light">
         <span>协议: {protocol}</span>
-        <span>{new Date().toLocaleTimeString("zh-CN", { hour12: false })}</span>
+        <span>{completedAt}</span>
       </div>
     </div>
   );
