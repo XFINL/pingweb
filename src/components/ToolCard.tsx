@@ -1,4 +1,4 @@
-import { Globe, Radio, Navigation, Wifi } from "lucide-react";
+import { Globe, Radio, Navigation, Wifi, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +6,7 @@ interface ToolCardProps {
   title: string;
   subtitle: string;
   path: string;
-  icon: "http-v4" | "http-v6" | "ping-v4" | "ping-v6";
+  icon: "http-v4" | "http-v6" | "ping-v4" | "ping-v6" | "dns";
   delay?: number;
 }
 
@@ -15,6 +15,7 @@ const iconMap = {
   "http-v6": Navigation,
   "ping-v4": Radio,
   "ping-v6": Wifi,
+  dns: Search,
 };
 
 export default function ToolCard({ title, subtitle, path, icon, delay = 0 }: ToolCardProps) {

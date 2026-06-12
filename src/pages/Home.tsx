@@ -25,6 +25,12 @@ const tools = [
     path: "/ping-v6",
     icon: "ping-v6" as const,
   },
+  {
+    title: "DNS 解析",
+    subtitle: "全球多节点 DNS 解析查询",
+    path: "/dns",
+    icon: "dns" as const,
+  },
 ];
 
 export default function Home() {
@@ -45,7 +51,7 @@ export default function Home() {
       {/* Grid */}
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-4xl">
-          <div className="swiss-grid grid-cols-1 sm:grid-cols-2">
+          <div className="swiss-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {tools.map((tool, i) => (
               <ToolCard
                 key={tool.path}
